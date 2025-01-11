@@ -48,8 +48,8 @@ const GoogleSignInComponent = () => {
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       {isSignedIn ? (
         <View style={{ alignItems: 'center' }}>
-          <Text>Welcome, {userInfo?.user?.name}!</Text>
-          <Image source={{ uri: userInfo?.user?.photo }} style={{ width: 100, height: 100, borderRadius: 50, marginTop: 10 }} />
+          <Text>Welcome, {userInfo?.data.user?.name}!</Text>
+          <Image source={{ uri: userInfo?.datauser?.photo }} style={{ width: 100, height: 100, borderRadius: 50, marginTop: 10 }} />
           <Button title="Sign Out" onPress={signOut} />
         </View>
       ) : (

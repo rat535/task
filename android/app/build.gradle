@@ -123,3 +123,4 @@ dependencies {
     // For Google Sign-In
     implementation 'com.google.android.gms:play-services-auth:20.7.0'
 }
+apply from:"../../node_modules/react-native-vector-icons/fonts.gradle"
