@@ -40,6 +40,7 @@ const ResumeBuilder = () => {
  
                 if (loginResponse.status === 200) {
                     const loginUrl = `https://resume.bitlabs.in:5173/auth/login?identifier=${encodeURIComponent(newData.identifier)}&password=${encodeURIComponent(newData.password)}`;
+                    console.log('Login URL:', loginUrl);
                     setLoginUrl(loginUrl);
                 } else {
                     console.error('Login failed:', loginResponse.data);
