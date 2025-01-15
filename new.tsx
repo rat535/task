@@ -28,6 +28,7 @@ import ViewJobDetails from './src/screens/Jobs/ViewJobDetails';
 import Notification from './src/screens/alert/Notification';
 import SavedDetails from './src/screens/Jobs/SavedDetails';
 import { ProfilePhotoProvider } from './src/context/ProfilePhotoContext';
+import ResumeBuilder from './src/screens/profile/ResumeBuilder';
 
 export type RootStackParamList = {
   ForgotPassword: undefined,
@@ -41,8 +42,8 @@ export type RootStackParamList = {
   Jobs: undefined;
   JobDetails: { job: any }; // Pass job data to the JobDetails screen
   JobDetailsScreen: { job: any };
-  ViewJobDetails: {job:any};
-  AppliedJobs: {job:any};
+  ViewJobDetails: { job: any };
+  AppliedJobs: { job: any };
   SavedDetails: { job: any };
   SavedJobs: undefined;
   Profile: { retake?: boolean } | undefined
@@ -52,7 +53,8 @@ export type RootStackParamList = {
   TimeUp: undefined;
   Badge: { skillName: string; testType: string };
   ChangePassword: undefined;
-  Notification:undefined;
+  Notification: undefined;
+  ResumeBuilder: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -134,7 +136,7 @@ const Appnavigator = () => {
           <Stack.Screen
             name="ChangePassword"
             component={ChangePasswordScreen}
-            options={{headerShown:false}}
+            options={{ headerShown: false }}
           />
 
           <Stack.Screen
@@ -152,12 +154,12 @@ const Appnavigator = () => {
             component={JobDetailsScreen}
             options={{ title: 'Job Details' }}
           />
-           <Stack.Screen
+          <Stack.Screen
             name="ViewJobDetails"
             component={ViewJobDetails}
-          
+
           />
-           <Stack.Screen
+          <Stack.Screen
             name="SavedDetails"
             component={SavedDetails}
             options={{ title: 'Job Details' }}
@@ -193,9 +195,14 @@ const Appnavigator = () => {
             options={{ headerShown: false }}
           />
           <Stack.Screen
-          name="Notification"
-          component={Notification}
-        />
+            name="Notification"
+            component={Notification}
+          />
+          <Stack.Screen
+            name="ResumeBuilder"
+            component={ResumeBuilder}
+            options={{ title: 'Resume Builder' }}
+          />
         </>
       )}
     </Stack.Navigator>
@@ -205,23 +212,23 @@ const Appnavigator = () => {
 const AppWithProfileProvider = () => {
   const { userToken, userId } = useAuth();
 
-    return (
+  return (
     <ProfilePhotoProvider userToken={userToken} userId={userId}>
       <NavigationContainer >
-       <Appnavigator />
-       <Toast />
-        </NavigationContainer>
-         </ProfilePhotoProvider>
-          );
-         };
+        <Appnavigator />
+        <Toast />
+      </NavigationContainer>
+    </ProfilePhotoProvider>
+  );
+};
 
 const App = () => {
 
- return (
-   <AuthProvider>
-     <AppWithProfileProvider />
-   </AuthProvider>
- );
+  return (
+    <AuthProvider>
+      <AppWithProfileProvider />
+    </AuthProvider>
+  );
 };
 
 export default App;

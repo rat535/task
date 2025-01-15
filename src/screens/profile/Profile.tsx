@@ -83,6 +83,17 @@ function ProfileComponent() {
         }
         return true; // For iOS or platforms other than Android
     };
+    const [key, setKey] = useState(0);
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+             console.log('Profile screen is focused');
+              setKey(prevKey => prevKey + 1);
+         // Change the key to force re-render
+         });
+          return unsubscribe;
+         }, [navigation]);
+
+
     useEffect(() => {
         if (userId && userToken) {
             fetchProfilePhoto(userToken, userId);
@@ -335,7 +346,7 @@ const response = await ProfileService.uploadResume(userToken, userId, formData);
     };
  
     return (
-        <KeyboardAvoidingView behavior={Platform.OS == 'ios' ? 'padding' : 'height'} >
+        <KeyboardAvoidingView behavior={Platform.OS == 'ios' ? 'padding' : 'height'} key={key}>
             <ScrollView>
                 <View>
                     <View style={styles.card}>
@@ -560,7 +571,7 @@ const response = await ProfileService.uploadResume(userToken, userId, formData);
                         <View style={styles.modalCard1}>
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 10 }}>
                                 <Text style={styles.modalTitle1}>Resume</Text>
-                                <TouchableOpacity onPress={() => setResumeModalVisible(false)}>
+                                <TouchableOpacity onPress={() => setResumeModalVisible(false)} style={{marginLeft:'70%'}}>
                                     <Text style={{ fontSize: 16, color: 'red', top: -10 }}>X</Text>
                                 </TouchableOpacity>
                             </View>
@@ -583,6 +594,7 @@ const response = await ProfileService.uploadResume(userToken, userId, formData);
                             <View style={styles.resumeModal}>
                                 <TouchableOpacity
                                     style={[styles.uploadButton, { marginRight: 10 }]}
+                                    onPress={() => navigation.navigate('ResumeBuilder')}
                                 >
                                     <Text style={styles.saveButtonText}>Build your Resume</Text>
                                 </TouchableOpacity>

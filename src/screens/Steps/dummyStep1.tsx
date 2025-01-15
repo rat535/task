@@ -11,6 +11,7 @@ import {
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../../New';
 import ProgressBar from '../../components/progessBar/ProgressBar';
+import LinearGradient from 'react-native-linear-gradient';
  
 type Step1ScreenRouteProp = RouteProp<RootStackParamList, 'Step1'>;
  
@@ -151,11 +152,18 @@ const Dummystep1: React.FC = ({ route, navigation }: any) => {
  
       {/* Footer with Back and Next Buttons */}
       <View style={styles.footer}>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-            <Text style={styles.nextButtonText}>Next</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.buttonContainer}>
+  <LinearGradient
+    colors={['#F97316', '#FAA729']}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 0 }}
+    style={[styles.nextButton, styles.applyButtonGradient]}
+  >
+    <TouchableOpacity style={styles.gradientTouchable} onPress={handleNext}>
+      <Text style={styles.nextButtonText}>Next</Text>
+    </TouchableOpacity>
+  </LinearGradient>
+</View>
       </View>
     </View>
   );
@@ -185,11 +193,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#fff',
     borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 5,
+   
     marginBottom: 40,
   },
   footer: {
@@ -199,7 +203,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingVertical: 15,
     backgroundColor: '#fff',
-    borderTopWidth: 1,
+    
     borderTopColor: '#ccc',
   },
   buttonContainer: {
@@ -248,6 +252,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: -8,
     marginBottom: 8,
+  },
+  applyButtonGradient: {
+    width: '45%', // Adjust this if necessary
+  },
+  gradientTouchable: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
  

@@ -12,6 +12,7 @@ import {RouteProp} from '@react-navigation/native';
 import {RootStackParamList} from '../../../New';
 import DropDownPicker from 'react-native-dropdown-picker';
 import API_BASE_URL from '../../services/API_Service';
+import LinearGradient from 'react-native-linear-gradient';
 
 import {useAuth} from '../../context/Authcontext';
 type Step2ScreenRouteProp = RouteProp<RootStackParamList, 'Step2'>;
@@ -382,9 +383,16 @@ const Dummystep2: React.FC = ({route, navigation}: any) => {
             <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+          <LinearGradient
+      colors={['#F97316', '#FAA729']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      style={styles.nextButton}
+    >
+          <TouchableOpacity  onPress={handleNext}>
             <Text style={styles.nextButtonText}>Next</Text>
           </TouchableOpacity>
+          </LinearGradient>
         </View>
       </View>
     </View>
@@ -410,11 +418,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#fff',
     borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 5,
+   
     marginBottom: 40,
   },
   footer: {
@@ -424,7 +428,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingVertical: 17,
     backgroundColor: '#fff',
-    borderTopWidth: 1,
+   
     borderTopColor: '#ccc',
   },
   buttonContainer: {
@@ -455,7 +459,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E4E2',
   },
   backButton: {
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#F97316',
     backgroundColor: 'white',
     paddingVertical: 12,
@@ -471,13 +475,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   nextButton: {
-    backgroundColor: '#F97316',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 5,
     alignItems: 'center',
     justifyContent: 'center',
     width: '45%',
+  },
+  gradientTouchable: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   nextButtonText: {
     color: 'white',

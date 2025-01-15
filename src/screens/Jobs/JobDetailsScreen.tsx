@@ -1,54 +1,71 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient'; // Ensure this is imported
-import { RouteProp } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { saveJob, applyJob } from '../../services/Jobs/JobDetails'; // Import API functions
-import { JobData } from '../../models/Jobs/ApplyJobmodel'; // Import types
-import { RootStackParamList } from '../../../New';
+import React, { useEffect, useState } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+  
+} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import axios from 'axios';
+import { useRoute } from '@react-navigation/native';
 import { useAuth } from '../../context/Authcontext';
-import SemiCircleProgress from '../../components/progessBar/SemiCircularProgressBar';
-import { ProfileService } from '../../services/profile/ProfileService';
-import { fetchJobDetails } from '../../services/Jobs/RecommendedJobs';
-import { Linking } from 'react-native';
-import Toast from 'react-native-toast-message';
-import { removeSavedJob } from '../../services/Jobs/JobDetails';
-import { ScrollView } from 'react-native-gesture-handler';
-
-// Type for navigation prop
-type JobDetailsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'JobDetails'>;
-
-// Type for route prop
-type JobDetailsScreenRouteProp = RouteProp<RootStackParamList, 'JobDetails'>;
-
-type JobDetailsProps = {
-  route: JobDetailsScreenRouteProp;
-  navigation: JobDetailsScreenNavigationProp;
+import { RouteProp } from '@react-navigation/native';
+import { RootStackParamList } from '../../../New';
+import Icon from 'react-native-vector-icons/FontAwesome';
+import { useNavigation } from '@react-navigation/native';
+import { JobData } from '../../models/Jobs/ApplyJobmodel';
+import ViewJobDetails from './ViewJobDetails';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { applyJob } from '../../services/Jobs/JobDetails';
+import API_BASE_URL from '../../services/API_Service';
+type JobDetailsScreenProps = {
+  route: RouteProp<RootStackParamList, 'JobDetailsScreen'>;
 };
 
-const JobDetails: React.FC<JobDetailsProps> = ({ route, navigation }) => {
-  const { job } = route.params; // job data passed from the previous screen
-  const [isJobSaved, setIsJobSaved] = useState(false);
-  const { userToken, userId } = useAuth();
-  const [isJobApplied, setIsJobApplied] = useState(false);
-  const [skills, setSkills] = useState<string[]>([]); // Explicitly setting the type as string[]
-  const [suggestedCourses, setSuggestedCourses] = useState<string[]>([]);
-  const [matchedSkills, setMatchedSkills] = useState<string[]>([]);
-  const [percent, setPercent] = useState<number>(0);
-  const [skillProgressText, setSkillProgressText] = useState<string | null>(null);
-  const [perfectMatchSkills, setPerfectMatchSkills] = useState<string[]>([]); // State for perfect match skills
-  const [unmatchedSkills, setUnmatchedSkills] = useState<string[]>([]);
 
 
-  const courseImages: Record<string, any> = {
-    "HTML&CSS": require('../../assests/Images/Html&Css.png'),
-    "JAVA": require('../../assests/Images/Java1.png'),
-    "JAVASCRIPT": require('../../assests/Images/JavaScript.png'),
-    "MYSQL": require('../../assests/Images/Mysqll.png'),
-    "REACT": require('../../assests/Images/React.png'),
-    "SPRINGBOOT": require('../../assests/Images/SpringBoot.png'),
-    "PYTHON": require('../../assests/Images/python.png'),
-  };
+const JobDetailsScreen: React.FC<JobDetailsScreenProps> = ({ route }) => {
+  const { job } = route.params;
+  const { userToken } = useAuth();
+  const [jobStatus, setJobStatus] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'JobDetails'>>();
+  useEffect(() => {
+    const fetchJobStatus = async () => {
+      try {
+        const response = await axios.get(
+          `${API_BASE_URL}/applyjob/recruiters/applyjob-status-history/${job.applyJobId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${userToken}`,
+            },
+          }
+        );
+
+        const body = response.data;
+        setLoading(false);
+
+        if (Array.isArray(body) && body.length > 0) {
+          const filteredStatuses = body.filter(
+            status => !['screening', 'interview', 'selected', 'rejected'].includes(status.status)
+          );
+          const reversedStatuses = filteredStatuses.reverse();
+          setJobStatus(reversedStatuses);
+        }
+      } catch (error) {
+        console.error('Error fetching job status:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchJobStatus();
+  }, [job, userToken]);
+
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -57,312 +74,116 @@ const JobDetails: React.FC<JobDetailsProps> = ({ route, navigation }) => {
     const [year, month, day] = dateArray;
     return `${monthNames[month - 1]} ${day}, ${year}`;
   };
-
-  const courseUrlMap: Record<string, any> = {
-    "HTML&CSS": "https://upskill.bitlabs.in/course/view.php?id=9",
-    "JAVA": "https://upskill.bitlabs.in/course/view.php?id=22",
-    "PYTHON": "https://upskill.bitlabs.in/course/view.php?id=7",
-    "MYSQL": "https://upskill.bitlabs.in/course/view.php?id=8",
-    "JAVASCRIPT": "https://upskill.bitlabs.in/course/view.php?id=47",
-    "REACT": "https://upskill.bitlabs.in/course/view.php?id=21",
-    "SPRING BOOT": "https://upskill.bitlabs.in/course/view.php?id=23"
+  const formatDates= (dateArray: [number, number, number]): string => {
+    const [year, month, day] = dateArray;
+    const date = new Date(year, month - 1, day);
+    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
   };
-
-  useEffect(() => {
-
-    const fetchProfileData = async () => {
-      try {
-        const profileData = await ProfileService.fetchProfile(userToken, userId);
-        const applicantSkills = profileData.skillsRequired.map((skill: { skillName: string }) =>
-          skill.skillName.toUpperCase()
-        );
-
-        // Storing applicant skills
-        console.log("Applicant Skills:", applicantSkills);
-        const jobData = await fetchJobDetails(job.id, userId, userToken);
-        console.log(jobData);
-        setSkillProgressText(jobData.matchStatus);
-        const Scourse = jobData.sugesstedCourses;
-
-        // setSkills(job.skillsRequired.map((skill:any) => skill.skillName as string));
-        setSkills(job.skillsRequired.map((skill: { skillName: string }) => skill.skillName.toUpperCase()));
-        setSuggestedCourses(Scourse);
-
-        const matchPercentage = jobData.matchPercentage;
-        const skillsRequired = jobData.skillsRequired.map(skill => skill.skillName.toUpperCase());
-        // const matchskill = jobData.matchedSkills.map(skill => skill.skillName.toUpperCase());
-        // console.log("matchskill", matchskill);
-        console.log("skillsrequired", skillsRequired);
-
-
-
-        //   const perfectMatchedSkills = applicantSkills.filter((skill:any) => combinedSkills.includes(skill));
-
-        // // Find unmatched skills
-        // const unmatchedSkills = combinedSkills.filter(skill => !applicantSkills.includes(skill));
-
-
-        setPerfectMatchSkills(jobData.matchedSkills.map((skill: any) => skill.skillName));
-        setUnmatchedSkills(skillsRequired);
-        //   const matchPercentage = (perfectMatchedSkills.length / combinedSkills.length) * 100;
-        console.log(matchPercentage);
-        setPercent(matchPercentage);
-      } catch (error) {
-        console.error('Error fetching profile data:', error);
-      }
-    };
-
-    fetchProfileData();
-  }, [job.id, userId, userToken]);
-
-  const handleRemoveJob = async () => {
-    try {
-      const result = await removeSavedJob(job.id, userId, userToken);
-      if (result) {
-        Toast.show({
-          type: 'success',
-          position: 'bottom',
-          text1: 'Success',
-          text2: 'Job removed successfully!',
-          visibilityTime: 5000,
-        });
-        navigation.goBack(); // Navigate back after removal
-      }
-    } catch (error) {
-      console.error('Error removing job:', error);
-      Toast.show({
-        type: 'error',
-        position: 'bottom',
-        text1: 'Error',
-        text2: 'Failed to remove job.',
-        visibilityTime: 5000,
-      });
-    }
-  };
-
-  const handleApplyJob = async () => {
-    try {
-      const result = await applyJob(userId, job.id, userToken);
-      if (result) {
-        setIsJobApplied(true);
-        // Alert.alert('Success', 'Job application submitted successfully!');
-        Toast.show({
-          type: 'success',
-          text1: 'Success',
-          text2: 'Job application submitted successfully!',
-          visibilityTime: 5000, // Set toast visibility duration to 5 seconds
-        });
-      }
-    } catch (error) {
-      console.error('Error applying for job:', error);
-      // Alert.alert('Error', 'Failed to apply for job.');
-      Toast.show({
-        type: 'error',
-        text1: 'Error',
-        text2: 'Failed to apply for job.',
-        visibilityTime: 5000, // Set toast visibility duration to 5 seconds
-      });
-    }
-  };
-
-  // const percentageMatch = matchPercentage;
-
   return (
-
-    <View style={styles.container}>
-      <ScrollView>
-        <View style={styles.jobCard}>
-          <View style={styles.row}>
-            <Image
-              source={{ uri: 'https://via.placeholder.com/50' }} // Replace with actual company logo URL
-              style={styles.companyLogo}
-            />
-            <View style={styles.jobDetails}>
-              <Text style={styles.jobTitle}>{job.jobTitle}</Text>
-              <Text style={styles.companyName}>{job.companyname}</Text>
-            </View>
-          </View>
-          <View style={styles.tagRow}>
-            <View style={[styles.tag, styles.locationContainer]}>
+    <View style={{ flex: 1 }}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom:80 }}>
+      {loading ? (
+        <View style={styles.loader}>
+          <ActivityIndicator size="large" color="#FF8C00" />
+        </View>
+      ) : (
+        <View>
+          <View style={styles.jobCard}>
+            <View style={styles.row}>
               <Image
-                source={require('../../assests/Images/rat/loc.png')}
-                style={styles.locationIcon}
+                source={{ uri: 'https://via.placeholder.com/50' }}
+                style={styles.companyLogo}
               />
-              <Text style={styles.locationText}>{job.location}</Text>
+              <View style={styles.jobDetails}>
+                <Text style={styles.jobTitle}>{job.jobTitle}</Text>
+                <Text style={styles.companyName}>{job.companyname}</Text>
+              </View>
             </View>
-            <View style={styles.oval}>
-              <Image
-                source={require('../../assests/Images/rat/exp.png')}
-                style={styles.brieficon}
-              />
-              <Text style={styles.ovalText}>
-                Exp: {job.minimumExperience} - {job.maximumExperience} years
+            <View style={styles.tagRow}>
+              <View style={[styles.tag, styles.locationContainer]}>
+                <Image
+                  source={require('../../assests/Images/rat/loc.png')}
+                  style={styles.locationIcon}
+                />
+                <Text style={styles.locationText}>{job.location}</Text>
+              </View>
+              <View style={styles.oval}>
+                <Image
+                  source={require('../../assests/Images/rat/exp.png')}
+                  style={styles.brieficon}
+                />
+                <Text style={styles.ovalText}>
+                  Exp: {job.minimumExperience} - {job.maximumExperience} years
+                </Text>
+              </View>
+              <Text style={styles.tag}>
+                ₹ {job.minSalary} - {job.maxSalary} LPA
+              </Text>
+              <Text style={styles.tag}>{job.employeeType}</Text>
+              <Text style={styles.postedOn}>
+                Posted on {formatDate(job.creationDate)}
               </Text>
             </View>
-            <Text style={styles.tag}>
-              ₹ {job.minSalary} - ₹ {job.maxSalary} LPA
-            </Text>
-            <Text style={styles.tag}>{job.employeeType}</Text>
           </View>
-          <Text style={styles.postedOn}>
-            Posted on {formatDate(job.creationDate)}
-          </Text>
-        </View>
-        <View style={styles.jobCard}>
-          <Text style={[styles.jobdestitle, { marginBottom: 16 }]}>Skill Match Probability</Text>
-          <Text style={styles.message}>
-            The more the probability, the more are the chances to get hired.
-          </Text>
-          <SemiCircleProgress percentage={percent} />
-
-          <View>
-            <View style={styles.centeredView}>
-              <Text style={styles.centeredText}>{skillProgressText}</Text>
-            </View>
-          </View>
-
-          {/* <View style={styles.skillsContainer}>
-          {skills.map((skill: string, index: number) => (
-            <Text key={index} style={matchedSkills.includes(skill) ? [styles.skillTag, styles.matchedSkill] : styles.skillTag}>
-              {skill}
-            </Text>
-          ))}
-        </View> */}
-          {/* <View style={styles.skillsContainer}>
-  {skills
-    .filter(skill => perfectMatchSkills.includes(skill))
-    .map((skill, index) => (
-      <Text key={index} style={[styles.skillTag, styles.matchedSkills]}>
-        {skill}
-      </Text>
-    ))}
   
-  {skills
-    .filter(skill => unmatchedSkills.includes(skill))
-    .map((skill, index) => (
-      <Text key={index} style={[styles.skillTag, styles.unmatchedSkill]}>
-        {skill}
-      </Text>
-    ))}
-</View> */}
-
-          <View style={styles.skillsContainer}>
-            {/* Perfectly Matched Skills */}
-            {perfectMatchSkills.length > 0 && (
-              <View style={styles.skillRow}>
-                {perfectMatchSkills.map((skill, index) => (
-                  <Text key={index} style={[styles.skillTag, styles.matchedSkills]}>
-                    {skill}
-                  </Text>
-                ))}
-              </View>
-
-            )}
-
-            {/* Unmatched Skills */}
-            {unmatchedSkills.length > 0 && (
-              <View style={styles.skillRow}>
-                {unmatchedSkills.map((skill, index) => (
-                  <View key={index} style={styles.unmatchedSkillContainer}>
-                    {/* Add an image before the skill text */}
-                    <Image
-                      source={require('../../assests/Images/alert-circle.png')} // Replace with the actual image path
-                      style={styles.unmatchedSkillIcon} // Define this style as needed
-                    />
-                    <Text style={styles.unmatchedSkill}>
-                      {skill}
+          <View style={styles.statusContainer}>
+            <Text style={styles.statusHeader}>Status History</Text>
+           
+            {jobStatus.length > 0 ? (
+              <View style={styles.statusTable}>
+                {jobStatus.map((status, index) => (
+                  <View key={index} style={styles.statusRow}>
+                    <Text style={styles.statusDate}>
+                      {formatDates(status.changeDate)}
+                    </Text>
+                    <View style={styles.iconWrapper}>
+                      {status.status === 'Completed' ? (
+                        <Icon name="check-circle" size={24} color="#4CAF50" />
+                      ) : (
+                        <View style={styles.circle} />
+                      )}
+                      {index < jobStatus.length - 1 && (
+                        <View style={styles.verticalLine} />
+                      )}
+                    </View>
+                    <Text style={styles.statusText}>
+                      {status.status === 'New' ? 'Job Applied' : status.status}
                     </Text>
                   </View>
                 ))}
               </View>
+            ) : (
+              <Text style={styles.placeholderText}>
+                No status history available!
+              </Text>
             )}
 
-
-
           </View>
-
         </View>
-      <View style={styles.jobCard}>
-            <Text style={styles.jobdestitle}>Full Job Description</Text>
-      
-        <Text style={styles.description}>
-          {job.description.replace(/<[^>]+>/g, '')}
-        </Text>
-      
-              
-            </View>
-
-
-        {/* Suggested Courses Container */}
-        {suggestedCourses && suggestedCourses.length > 0 && (
-          <View style={styles.jobCard}>
-            <Text style={styles.jobdestitle}>Suggested Courses</Text>
-            <View>
-              {suggestedCourses.map((course, index) => (
-                <View key={index} style={styles.courseCard}>
-                  {/* Check if the course has a matching image */}
-                  {courseImages[course] ? (
-                    <TouchableOpacity
-                      style={styles.imageRow}
-                      onPress={() => Linking.openURL(courseUrlMap[course])}
-                    >
-                      <Image
-                        source={courseImages[course]}
-                        style={styles.courseImage}
-                      />
-                      <Image source={require('../../assests/Images/external-link2.png')} style={styles.externalLinkIcon} />
-
-                    </TouchableOpacity>
-                  ) : (
-                    <Text style={styles.fallbackText}>Image not found</Text>
-                  )}
-                  <Toast />
-                </View>
-
-              ))}
-            </View>
-          </View>
-        )}
-
-      </ScrollView>
-      <View style={{ height: 20 }} />
-      <View style={styles.footerContainer}>
-        {/* Save Job Button */}
-        {isJobSaved ? (
-          <TouchableOpacity style={[styles.button, styles.appliedButton]} disabled>
-            <Text style={styles.appliedButtonText}>Saved</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[styles.button, styles.saveButton]}
-            onPress={handleRemoveJob}
-          >
-            <Text style={styles.buttonText}>Remove</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Apply Now Button */}
-        {isJobApplied ? (
-          <TouchableOpacity style={[styles.button, styles.appliedButton]} disabled>
-            <Text style={styles.appliedButtonText}>Applied</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={[styles.button, styles.applyButton]}
-            onPress={handleApplyJob}
-          >
-            <LinearGradient
-              colors={['#F97316', '#FAA729']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[styles.button, styles.applyButtonGradient]}
-            >
-              <Text style={styles.applybuttonText}>Apply Now</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-      </View>
+      )}
+    </ScrollView>
+  <View style={{height:20}}/>
+    {/* Footer outside ScrollView */}
+    <View style={styles.footer}>
+      <TouchableOpacity
+        style={[styles.button, styles.viewJobButton]}
+        onPress={() => {
+          console.log('Navigating to JobDetails with job:', job);
+          navigation.navigate('ViewJobDetails', { job });
+        }}
+      >
+        <LinearGradient
+          colors={['#F97316', '#FAA729']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.button, styles.applyButtonGradient]}
+        >
+          <Text style={styles.viewJobText}>View Job</Text>
+        </LinearGradient>
+      </TouchableOpacity>
     </View>
+  </View>
+  
   );
 };
 
@@ -370,30 +191,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f6f6f6',
-    justifyContent:'space-between',
+    padding: 16,
   },
-  jobdestitle: {
-    color: '#F46F16',
-    fontWeight: 'bold',
+  loader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
     fontSize: 16,
-    marginBottom: 8,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 50,
   },
-  appliedButton: {
-    backgroundColor: '#d3d3d3', // Gray background for "Applied"
-    marginLeft: 5,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#a9a9a9',
-  },
-  appliedButtonText: {
-    color: '#555', // Gray text for "Applied"
-    fontWeight: 'bold',
-  },
-  description: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-    flexShrink:1,
+  jobCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 10,
+    marginLeft: 6,
+
   },
   oval: {
     flexDirection: 'row',
@@ -414,52 +231,32 @@ const styles = StyleSheet.create({
     width: 8,
     marginRight: 8,
   },
-  saveIcon: {
-    width: 12, // Adjust size as needed
-    height: 12,
-    marginRight: 8, // Space between icon and text
-  },
-  scrollContainer: {
-    padding: 16,
-    flexGrow:1,
-  },
-  progressContainer: {
+  briefcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 16,
   },
-  progressText: {
-    marginRight:30,
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
+  tag: {
+    backgroundColor: '#f6f6f6',
+    color: 'black',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 50,
+    marginRight: 8,
+    marginBottom:8,
+    fontSize: 8,
   },
-  progressBar: {
-    marginVertical: 8,
-  },
-  matchedSkill: {
-    backgroundColor: '#498C07',
-
-  },
-
-  circleProgress: {
-    transform: [{ rotate: '0deg' }], // Rotate to start progress from the bottom
-  },
-  loader: {
-    flex: 1,
-    justifyContent: 'center',
+  locationContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(236, 78, 29, 0.7)',
   },
-  jobCard: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 10,
-    marginLeft: 16,
-    marginTop: 10,
-    marginRight: 13
+  locationIcon: {
+    width: 8,
+    height: 8,
+    marginRight: 6,
+  },
+  locationText: {
+    fontSize: 9,
+    color: 'black',
   },
   row: {
     flexDirection: 'row',
@@ -469,281 +266,170 @@ const styles = StyleSheet.create({
   companyLogo: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: 15,
     marginRight: 16,
   },
   jobDetails: {
     flex: 1,
   },
   jobTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    color: '#121212', // Text color
+    fontFamily: 'Plus Jakarta Sans', // Custom font (ensure the font is properly linked)
+    fontSize: 16, // Font size
+    fontStyle: 'normal', // Font style
+    fontWeight: '700', // Font weight
+    lineHeight: 16, // Adjust line height as needed
+    textTransform: 'capitalize', // Capitalize text
   },
   companyName: {
-    fontSize: 14,
-    color: '#888',
+    fontSize: 12,
+    fontFamily: "Plus Jakarta Sans",
+    fontStyle: 'normal',
+    fontWeight:600,
+    color: 'rgba(83, 83, 83, 0.80)',
     marginVertical: 4,
-  },
-  externalLinkIcon: {
-    width: 24,
-    height: 24,
   },
   tagRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'flex-start',
     marginBottom: 12,
+    marginTop: 6
   },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationText: {
-    fontSize: 9,
-    color: 'black',
-  },
-  tag: {
-    backgroundColor: '#f6f6f6',
-    color: 'black',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 50,
-    marginRight: 10,
-    marginBottom: 8,
-    fontSize: 9
-  },
-  skillTags: {
-    backgroundColor: '#f6f6f6',  // Light background color for the tag
-    padding: 10,
-    margin: 5,
-    borderRadius: 8,               // Rounded corners
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  courseImage: {
-    // width: '70%',                  // Adjust width to fit the image
-    height: 50,                 // Maintain aspect ratio
-    resizeMode: 'contain',
-    // Ensures the image covers the full area
-  },
-  imageRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingRight: 10,
-  },
-  postedOn: {
-    fontSize: 12,
-    color: '#888',
-  },
-  tabs: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  activeTab: {
-    borderBottomColor: '#FF8C00',
-  },
-  tabText: {
-    fontSize: 14,
-    color: '#888',
-  },
-  activeTabText: {
-    color: '#FF8C00',
-    fontWeight: 'bold',
-  },
-  footerContainer: {
-    flexDirection: 'row',
-    position: 'relative',
-    bottom: 0,
-    width: '100%',
-    backgroundColor: 'white',
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    height: 80,
-    paddingHorizontal: 10,
-    justifyContent: 'space-evenly',
-    alignItems: 'center',
-   
-  },
-  button: {
-    flex: 1,
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 8,
-    borderColor: '#F97316'
-  },
-  saveButton: {
-    backgroundColor: 'white',
-    marginRight: 5,
-    borderColor: '#F46F16',
-    borderWidth: 1,
-    borderRadius: 8,
-  },
-  applyButton: {
-    marginLeft: 5,
-    marginRight: 10
-  },
-  applyButtonGradient: {
-    borderRadius: 10,
-    flex:1,
-    width:'100%'
-  },
-  buttonText: {
-    color: '#F46F16',
-    fontWeight: 'bold',
-  },
-  locationIcon: {
-    width: 8,
-    height: 8,
-    marginRight: 4,
-  },
-  applybuttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  skillMatchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  semiCircle: {
-    width: 120,
-    height: 60,
-    borderRadius: 60,
-    backgroundColor: '#FF8C00',
-    overflow: 'hidden', // Keep contents within bounds
-    justifyContent: 'center',
-    alignItems: 'center',
-
-  },
-  skillMatchText: {
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 27.27,
-    textAlign: 'center',
-    textDecorationStyle: 'solid',
-    textDecorationColor: 'transparent',
-    color: '#fff',
-    marginLeft: 8,
-  },
-  message: {
+  description: {
     fontSize: 14,
     color: '#666',
     marginBottom: 8,
   },
-  requiredSkills: {
-    fontSize: 14,
-    color: '#333',
+  postedOn: {
+    color: '#979696', // Text color
+    fontFamily: 'Plus Jakarta Sans', // Custom font
+    fontSize:10,
+    fontStyle: 'normal', // Font style
+    fontWeight: '500', // Font weight
+    lineHeight: 23.76, // Line height (in points, not percentage)
+  },
+  statusHeader: {
+    fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#F46F16',
   },
-  skillsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start', // Align items to the start
-    alignItems: 'center', // Vertically center items
-  },
-  skillTag: {
-    flex: 0,
-    backgroundColor: '#F46F16',
-    color: 'white',
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-    borderRadius: 10,
-    marginRight: 8,
-    marginBottom: 4,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  skillRow: {
-    flex: 0,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 6,
-  },
-  courseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  statusContainer: {
+    marginTop: 10,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius:8,
+    marginLeft:2,
     marginBottom: 10,
   },
-
-  courseTitle: {
+  statusTable: {
+    borderWidth: 0,
+    borderColor: '#ddd',
+    borderRadius: 8,
+  },
+  statusHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    backgroundColor: '#f5f5f5',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  columnHeader: {
     fontSize: 14,
     color: '#333',
+    flex: 1,
+    textAlign: 'center',
   },
-  fallbackText: {
-    fontSize: 12,
-    color: 'red',
-  },
-  centeredView: {
-    justifyContent: "center",
-    alignSelf: "center",
-    marginLeft: -20,
-
-  },
-  centeredText: {
-    fontFamily: 'Plus Jakarta Sans',
-    fontSize: 15,
-    fontWeight: 'bold',
-    lineHeight: 35.27,
-    
-    marginRight:'5%',
-    color: '#000000',
-  },
-  matchedSkills: {
-    color: '#fff',
-    backgroundColor: '#498C07',
-    fontSize: 12,
-  },
-
-  unmatchedSkill: {
-    color: '#fff',
-   
-    fontSize: 12,
-  },
-  buttonContent: {
+  statusRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 14,
   },
-  buttonImage: {
-    width: 20, // Set the desired width
-    height: 20, // Set the desired height
-    marginRight: 8, // Add some space between the image and text
+  statusDate: {
+    fontSize: 14,
+    color: 'black',
+    flex: 1,
+    textAlign: 'center',
   },
-  unmatchedSkillIcon: {
-    width: 16, // Adjust width as needed
-    height: 16, // Adjust height as needed
-    marginRight: 8, // Space between image and text
+  statusText: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
+    textAlign: 'center',
   },
-  skillContainer: {
-    flexDirection: 'row', // Ensures image and text are side by side
-    alignItems: 'center', // Aligns items vertically in the center
-    marginBottom: 8, // Space between skill items
+  iconWrapper: {
+    zIndex: 1,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  unmatchedSkillContainer: {
-    flexDirection: 'row', // Align image and text side by side
-    alignItems: 'center', // Vertically center image and text
-    backgroundColor: '#BF2308', // Red background
-    paddingHorizontal: 8, // Add padding to the sides
-    paddingVertical: 4, // Add padding to the top and bottom
-    borderRadius: 10, // Rounded corners
-    marginRight: 8, // Space between skill tags
-    marginBottom: 4, // Space between rows of skills
+  circle: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#FF9800',
+    backgroundColor: '#FF9800',
+    marginLeft: -10,
   },
+  verticalLine: {
+    position: 'absolute',
+    top: 16,
+    bottom: -40,
+    width: 1,
+    backgroundColor: '#FF9800',
+    left: 7,
+  },
+  footer: {
+    backgroundColor: '#fff',
+    paddingVertical: 10, // Adjust padding for better spacing
+    paddingHorizontal: 16,
+    padding: 13,
+    flexDirection: 'row',
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    
+  },
+ 
+  button: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 8,
+  },
+  saveJobButton: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#FF9800',
+  },
+  saveJobText: {
+    color: '#FF9800',
+    fontSize: 16,
+    fontFamily: 'Plus Jakarta Sans',
+  },
+  viewJobText: {
+    color: 'white',
+    fontSize: 16,
+    fontFamily: 'Plus Jakarta Sans',
+  },
+  viewJobButton: {
+   
+  },
+  applyButtonGradient: {
+    borderRadius: 10,
+    flex:1,
+    width:'100%',
+    padding:20
+  },
+  
 
 });
 
-export default JobDetails;
+export default JobDetailsScreen;
